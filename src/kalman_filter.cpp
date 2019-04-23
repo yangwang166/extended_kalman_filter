@@ -31,57 +31,65 @@ void KalmanFilter::Predict() {
    * TODO: predict the state
    */
 
-//start
-   x_ = F_ * x_;
-   P_ = F_ * P_ * F_.transpose() + Q_;
-//end
+  //start
+  x_ = F_ * x_;
+  MatrixXd Ft = F_.transpose();
+  P_ = F_ * P_ * Ft + Q_;
+  //end
+
 }
 
 void KalmanFilter::Update(const VectorXd &z) {
   /**
    * TODO: update the state by using Kalman Filter equations
    */
-//start
-   VectorXd y = z - H_ * x_;
-   MatrixXd S = H_ * P_ * H_.transpose() + R_;
-   MatrixXd K = P_ * H_.transpose() * S.inverse();
-   x_ = x_ + K * y;
-   MatrixXd I;
-   I = MatrixXd::Identity(x_.size(), x_.size());
-   P_ = (I - K * H_) * P_;
-//end
+
+  // start
+  VectorXd y = z - H_ * x_;
+  MatrixXd Ht = H_.transpose();
+  MatrixXd S = H_ * P_ * Ht + R_;
+  MatrixXd K = P_ * Ht * S.inverse();
+  MatrixXd I = MatrixXd::Identity(4, 4);
+  x_ = x_ + K * y;
+  P_ = (I - K * H_) * P_;
+  // end
+
 }
 
 void KalmanFilter::UpdateEKF(const VectorXd &z) {
   /**
    * TODO: update the state by using Extended Kalman Filter equations
    */
-//start
-   const double px = x_(0);
-   const double py = x_(1);
-   const double vx = x_(2);
-   const double vy = x_(3);
-   const double rho_predicted = sqrt(px * px + py * py);
-   const double phi_predicted = atan2(py, px);
-   const double rho_rate_predicted = (px * vx + py * vy) / rho_predicted;
-   VectorXd hx(3);
-   hx << rho_predicted, phi_predicted, rho_rate_predicted;
-   VectorXd y = z - hx;
-   //Normalizing Angles between -Pi and Pi
-   const double Pi = 3.14159265358979323846;
-   while(y(1) > Pi)
-   {
-     y(1) = y(1) - 2 * Pi;
-   }
-   while(y(1) < -Pi)
-   {
-     y(1) = y(1) + 2 * Pi;
-   }
-   MatrixXd S = H_ * P_ * H_.transpose() + R_;
-   MatrixXd K = P_ * H_.transpose() * S.inverse();
-   x_ = x_ + K * y;
-   MatrixXd I;
-   I = MatrixXd::Identity(x_.size(), x_.size());
-   P_ = (I - K * H_) * P_;
-//end
+
+  //start
+  float px = x_(0);
+  float py = x_(1);
+  float vx = x_(2);
+  float vy = x_(3);
+
+  float rho = sqrt(px * px + py * py);
+  float theta = atan2(py, px);
+  float rho_dot = (px * vx + py * vy) / rho;
+
+  if(fabs(rho) < 0.0001){
+    rho_dot = 0;
+  }
+
+  VectorXd z_pred = VectorXd(3);
+  z_pred << rho, theta, rho_dot;
+
+  VectorXd y = z - z_pred;
+
+  y(1) = atan2(sin(y(1)), cos(y(1)));
+  MatrixXd Ht = H_.transpose();
+  MatrixXd S = H_ * P_ * Ht + R_;
+  MatrixXd K = P_ * Ht * S.inverse();
+
+  MatrixXd I = MatrixXd::Identity(4, 4);
+
+  // finally update the state
+  x_ = x_ + K * y;
+  P_ = (I - K * H_) * P_;
+  //end
+
 }

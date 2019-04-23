@@ -18,73 +18,54 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
   /**
    * TODO: Calculate the RMSE here.
    */
+
   //start
   VectorXd rmse(4);
   rmse << 0, 0, 0, 0;
 
-  // check the validity of the following inputs:
-  //  * the estimation vector size should not be zero
-  //  * the estimation vector size should equal ground truth vector size
-  size_t est_size = estimations.size();
-  size_t gt_size = ground_truth.size();
-  if(est_size == 0 || est_size != gt_size)
-  {
-	  cout << "CalculateRMSE()-Error-The size of input is invalid." << endl;
-	  return rmse;
+  if(estimations.size() != ground_truth.size() || estimations.size() == 0){
+    cout << "We got invalid estimation or ground truth" << endl;
+    return rmse;
   }
 
-  // accumulate squared errors
-  VectorXd error(4);
-  error << 0, 0, 0, 0;
-  for(size_t i = 0 ; i < est_size ; i ++)
-  {
-	  error = estimations[i] - ground_truth[i];
-	  // coefficient-wise multiplication
-	  error = error.array() * error.array();
-	  rmse += error;
+  for(unsigned int i = 0; i < estimations.size(); ++i){
+    VectorXd r = estimations[i] - ground_truth[i];
+    r = r.array() * r.array();
+    rmse += r;
   }
-  // calculate the mean
-  rmse = rmse / est_size;
-  // calculate the squared root
+
+  rmse = rmse/estimations.size();
   rmse = rmse.array().sqrt();
-  // return the result
   return rmse;
+
   //end
 }
 
 MatrixXd Tools::CalculateJacobian(const VectorXd& x_state) {
   /**
-   * TODO:
-   * Calculate a Jacobian here.
+   * TODO: Calculate a Jacobian here.
    */
-//start
-  double px = x_state(0);
-  double py = x_state(1);
-  double vx = x_state(2);
-  double vy = x_state(3);
 
-  // Initialize the Jacobian Matrix Hj
-  MatrixXd Hj(3, 4);
-  Hj << 0, 0, 0, 0,
-	      0, 0, 0, 0,
-		    0, 0, 0, 0;
+  //start
+  MatrixXd Hj(3,4);
+  float px = x_state(0);
+  float py = x_state(1);
+  float vx = x_state(2);
+  float vy = x_state(3);
 
-  // pre-compute a set of terms to avoid repeated calculation
-  double denominator1 = sqrt(px * px + py * py);
-  double denominator2 = px * px + py * py;
-  double denominator3 = denominator1 * denominator2;
+  float c1 = px * px + py * py;
+  float c2 = sqrt(c1);
+  float c3 = c1 * c2;
 
-  // check division by zero
-  if(denominator1 == 0)
-  {
-	  cout << "CalculateJacobian()-Error-The px and py cannot be zero simultaneously." << endl;
-	  return Hj;
+  if(fabs(c1) < 0.0001){
+    std::cout << "CalculateJacobian() Function got error: Can't divided by zero" << std::endl;
+    return Hj;
   }
-  // compute the Jacobian matrix
-  Hj << px / denominator1, py / denominator1, 0, 0,
-	      -py / denominator2, px / denominator2, 0, 0,
-		    py * (vx * py - vy * px) / denominator3, px * (vy * px - vx * py) / denominator3, px / denominator1, py / denominator1;
-  // return the result
+
+  Hj << (px / c2),                      (py / c2),                     0,       0,
+       -(py / c1),                      (px / c1),                     0,       0,
+         py * (vx * py - vy * px) / c3, px * (px * vy - py * vx) / c3, px / c2, py / c2;
+
   return Hj;
-//end
+  //end
 }
